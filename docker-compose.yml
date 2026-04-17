@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: pokemon_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - pokemon_net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: pokemon_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pokemon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pokemon}
+      POSTGRES_DB: ${POSTGRES_DB:-pokemon_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pokemon}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pokemon_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: pokemon_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - pokemon_net
+
+volumes:
+  postgres_data:
+
+networks:
+  pokemon_net:
+    driver: bridge
